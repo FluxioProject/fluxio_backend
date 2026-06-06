@@ -1,0 +1,14 @@
+[
+  {
+    "origin": [
+      "https://tcc2026-7d3c4.web.app",
+      "https://tcc2026-7d3c4.firebaseapp.com"
+    ],
+    "method": ["PUT", "GET", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "x-goog-resumable"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]
