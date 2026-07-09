@@ -68,7 +68,12 @@ export async function verifyApiKeyPublic(
     return;
   }
 
-  const API_KEY_PUBLIC = "ycevqNVkJRs5vSImbfCe6zpI8LBthNd4";
+  const API_KEY_PUBLIC = process.env.PUBLIC_API_KEY;
+
+  if (!API_KEY_PUBLIC) {
+    reply.code(500).send("PUBLIC_API_KEY is not configured");
+    return;
+  }
 
   const apiKey = request.headers["x-api-key"];
 

@@ -1,40 +1,92 @@
-# AGENTS.md
+# Fluxio Backend - Agent Instructions
 
 ## Project Overview
 
-This repository contains the Firebase Cloud Functions backend for the TCC project. The functions app is implemented with Fastify, TypeScript, Zod schemas, Firebase Admin, Firestore, Firebase Auth, Cloud Storage, and Firebase Cloud Messaging.
+Firebase Cloud Functions backend for the Fluxio IoT platform. The Functions entry point exposes a Fastify API under `/api` for authentication/session handling, device ownership, channel configuration, MQTT credentials, firmware upload coordination, and push notifications.
 
-The deployed HTTPS entrypoint is `api` in `functions/src/index.ts`. Fastify routes are registered under `/users` and `/devices`.
+## Build & Test
 
-## Development Commands
-
-Run commands from `functions/` unless noted otherwise:
-
-```sh
+```bash
+cd functions
 npm install
 npm run build
+npm run lint
+
+# Local Firebase Functions emulator
 npm run serve
+
+# Deploy Cloud Functions
 npm run deploy
 ```
 
-On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`:
+Node.js 22 is required by `functions/package.json`.
 
-```sh
-npm.cmd run build
-npm.cmd run serve
+## Architecture
+
+```
+firebase.json                 - Firebase Functions configuration
+.firebaserc                   - Firebase project selection
+.env.example                  - local PUBLIC_API_KEY template
+functions/
+  package.json                - scripts, dependencies, Node engine
+  tsconfig.json               - TypeScript compiler settings
+  src/
+    index.ts                  - Firebase Functions export
+    app.ts                    - Fastify app factory, plugins, API key hook, routes
+    firebaseAdmin.ts          - Firebase Admin initialization
+    auth/tokens.ts            - public API key gate and auth token verification
+    routes/user_routes.ts     - user/session/FCM routes
+    routes/product_routes.ts  - device/channel/MQTT/firmware/notification routes
+    schemas/                  - Zod request and response schemas
+    services/                 - Firestore, Auth, Storage, FCM, and business logic
 ```
 
-## Code Guidelines
+## Key Conventions
 
-- Keep comments and documentation in English.
-- Keep API response text stable unless the frontend contract is being updated too.
-- Prefer existing service, route, and schema patterns before adding new abstractions.
-- Validate request payloads with Zod schemas in `functions/src/schemas`.
-- Keep Firestore write paths explicit and avoid broad recursive deletes.
-- Run `npm.cmd run build` or `npm run build` before handing off changes.
+- Keep route declarations in `src/routes/` and delegate business logic to `src/services/`.
+- Validate route bodies, params, query strings, and responses with Zod schemas from `src/schemas/`.
+- Public access is gated globally by `verifyApiKeyPublic` using the `x-api-key` header.
+- Authenticated user/device routes use `verifyToken` as a route `preHandler`.
+- The shared API key comes from `PUBLIC_API_KEY`; never hardcode it in source.
+- Keep `.env` local and gitignored. Update `.env.example` only with placeholder values.
+- Use Firebase Admin from `firebaseAdmin.ts`; do not initialize Admin SDK in multiple modules.
+- Firmware upload flow is split between signed upload URL generation and commit metadata.
+- Keep endpoint names compatible with the ESP32 firmware and Flutter clients unless all clients are updated together.
 
-## Notification Behavior
+## API Surface
 
-Mobile push notifications are sent from `functions/src/services/notification_service.ts`.
+Base function path: `/api`
 
-Each device has a Firestore-backed notification cooldown using `devices/{deviceid}.lastMobileNotificationAt`. This prevents repeated FCM sends for the same device within the configured cooldown window.
+User routes:
+- `POST /users/login`
+- `POST /users/register`
+- `POST /users/logout`
+- `GET /users/persist`
+- `PATCH /users/edit`
+- `DELETE /users/delete_own_account`
+- `POST /users/save-fcm-token`
+- `GET /users/x3r9m2`
+
+Device routes:
+- `POST /devices/create`
+- `GET /devices/mqtt`
+- `GET /devices/get-all-channels`
+- `PATCH /devices/update-channel`
+- `PATCH /devices/edit-device/:deviceId`
+- `DELETE /devices/delete-device/:deviceId`
+- `POST /devices/send-notification`
+- `POST /devices/:deviceId/firmware/get-upload-url`
+- `POST /devices/:deviceId/firmware/commit`
+
+## Security Notes
+
+- Never commit real API keys, Firebase service credentials, local environment files, cookies, or tokens.
+- Rotate `PUBLIC_API_KEY` if it appears in source control, logs, screenshots, or builds outside the intended environment.
+- Treat firmware upload URLs as sensitive and short lived.
+
+## Do Not Change Without Understanding
+
+- `verifyApiKeyPublic` is registered as a global Fastify pre-handler in `app.ts`.
+- `verifyToken` attaches authenticated user context expected by services.
+- Flutter and ESP32 clients depend on the existing route names and response shapes.
+- Firebase Functions deploy from `functions/lib`, generated by `npm run build`.

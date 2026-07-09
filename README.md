@@ -1,74 +1,76 @@
-# TCC Backend
+# Fluxio Backend
 
-Firebase Cloud Functions backend for the TCC project.
+Firebase Cloud Functions backend for the Fluxio IoT platform. It exposes a Fastify API for user sessions, device ownership, channel configuration, MQTT credentials, firmware upload coordination, and mobile push notification support.
 
-## Stack
+## Features
 
-- Firebase Functions v2
-- Fastify
-- TypeScript
-- Zod
-- Firebase Admin SDK
-- Firestore
-- Firebase Auth
-- Firebase Cloud Messaging
-- Cloud Storage signed URLs
-
-## Project Structure
-
-```text
-functions/
-  src/
-    app.ts                 Fastify app setup
-    index.ts               Firebase Functions HTTPS entrypoint
-    firebaseAdmin.ts       Firebase Admin singleton setup
-    auth/                  Auth and API key middleware
-    routes/                Fastify route definitions
-    schemas/               Zod request/response schemas
-    services/              Business logic
-```
+- Firebase Authentication session handling with secure cookies
+- Public API key gate through the `x-api-key` header
+- Device registration, editing, deletion, and channel configuration
+- MQTT credential lookup for registered devices
+- Firmware upload URL generation and firmware commit metadata
+- FCM token storage and push notification dispatch
+- Zod schemas for request and response validation
+- Rate limiting, CORS, multipart support, and Firebase Functions deployment
 
 ## Requirements
 
 - Node.js 22
 - Firebase CLI
-- Access to the Firebase project configured in `.firebaserc`
+- A Firebase project with Authentication, Firestore, Storage, and Cloud Functions enabled
 
-## Setup
+## Configuration
 
-```sh
-cd functions
-npm install
+The public API key is read from an environment variable and must match the value used by the Flutter clients and ESP32 firmware:
+
+```bash
+PUBLIC_API_KEY=replace_with_shared_fluxio_api_key
 ```
 
-## Build
+For local development, copy `.env.example` to `.env`. The `.env` file is ignored by Git.
 
-```sh
+For deployed Firebase Functions, set the same value in the runtime environment before deploying.
+
+## Development
+
+```bash
+cd functions
+npm install
 npm run build
 ```
 
-If PowerShell blocks `npm.ps1`, run:
+Run the local emulator:
 
-```sh
-npm.cmd run build
-```
-
-## Run Locally
-
-```sh
+```bash
 npm run serve
 ```
 
-This builds the TypeScript project and starts the Firebase Functions emulator.
+Deploy the functions:
 
-## Deploy
-
-```sh
+```bash
 npm run deploy
 ```
 
-## Notes
+## API Surface
 
-- All routes require the public `x-api-key` header, except CORS preflight requests.
-- Authenticated user routes use the `__session` cookie.
-- Mobile notification sends are rate-limited per device through Firestore to avoid repeated push bursts.
+Base function: `/api`
+
+- `/users/login`
+- `/users/register`
+- `/users/logout`
+- `/users/persist`
+- `/users/edit`
+- `/users/delete_own_account`
+- `/users/save-fcm-token`
+- `/devices/create`
+- `/devices/mqtt`
+- `/devices/get-all-channels`
+- `/devices/update-channel`
+- `/devices/edit-device/:deviceId`
+- `/devices/delete-device/:deviceId`
+- `/devices/:deviceId/firmware/get-upload-url`
+- `/devices/:deviceId/firmware/commit`
+
+## Security Notes
+
+Do not commit real API keys, Firebase service credentials, or local environment files. Rotate `PUBLIC_API_KEY` whenever it has been exposed in source control, logs, screenshots, or builds outside the intended environment.
