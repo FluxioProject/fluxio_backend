@@ -3,15 +3,13 @@ import * as admin from "firebase-admin";
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    // em Cloud Functions / Cloud Run o credential é automático
-    // se você quiser pode deixar sem passar "credential"
+    // Cloud Functions and Cloud Run provide credentials automatically.
     storageBucket: "tcc2026-7d3c4.firebasestorage.app",
-    // se usar Realtime DB, pode colocar databaseURL aqui também
-    // databaseURL: "https://kva-esquemas-services.firebaseio.com",
+    // Add databaseURL here too if Realtime Database is used.
   });
 }
 
-// helpers opcionais (singletons)
+// Optional singleton helpers.
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 

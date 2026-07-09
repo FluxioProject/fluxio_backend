@@ -71,7 +71,7 @@ export const registerBodySchema = z.object({
     .max(80, "Nome muito longo"),
 });
 
-// Tipos inferidos
+// Inferred types.
 export type LoginBody = z.infer<typeof loginBodySchema>;
 export type RegisterBody = z.infer<typeof registerBodySchema>;
 
@@ -84,7 +84,7 @@ export const updateUserNameBodySchema = z.object({
 
 export const updateUserResponseSchema = z.object({
   message: z.string(),
-  user: userInfoSchema, // reutiliza name + email
+  user: userInfoSchema, // Reuse name and email.
 });
 
 export type UpdateUserNameBody = z.infer<
@@ -101,10 +101,10 @@ export type SaveFCMToken = z.infer<
 >;
 
 export const getCredentialsFirebase = z.object({
-    x4r1: z.string().min(1),   // apikey
-    x4r2: z.string().min(1),   // appId
-    x4r3: z.string().min(1),   // messagingSenderId
-    x4r4: z.string().min(1),   // projectId
-    x4r5: z.string().min(1),   // storageBucket
-    x4r6: z.string().min(1),   // databaseURL
+    x4r1: z.string().min(1),   // API key.
+    x4r2: z.string().min(1),   // App ID.
+    x4r3: z.string().min(1),   // Messaging sender ID.
+    x4r4: z.string().min(1),   // Project ID.
+    x4r5: z.string().min(1),   // Storage bucket.
+    x4r6: z.string().min(1),   // Database URL.
 });

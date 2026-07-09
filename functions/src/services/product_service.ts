@@ -5,7 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import * as schemas from "../schemas/product_schemas";
 import { admin } from "../firebaseAdmin";
 
-// CRIAR PRODUTO
+// Create a product.
 export async function createProductService(
   request: FastifyRequest<{ Body: schemas.CreateProductBody }>,
   reply: FastifyReply
@@ -65,7 +65,7 @@ export async function createProductService(
   }
 }
 
-// EDITAR NOME DO DEVICE
+// Edit the device name.
 export async function updateDeviceNameService(
   request: FastifyRequest<{
     Params: { deviceId: string };
@@ -87,7 +87,7 @@ export async function updateDeviceNameService(
   }
 
   try {
-    /** refs */
+    /** References. */
     const userDeviceRef = db
       .collection("users")
       .doc(uid)
@@ -98,7 +98,7 @@ export async function updateDeviceNameService(
       .collection("devices")
       .doc(deviceId);
 
-    /** valida ownership */
+    /** Validate ownership. */
     const userDeviceSnap = await userDeviceRef.get();
 
     if (!userDeviceSnap.exists) {
@@ -107,7 +107,7 @@ export async function updateDeviceNameService(
         .send("Device não encontrado para este usuário.");
     }
 
-    /** atualiza em paralelo */
+    /** Update both documents in parallel. */
     await Promise.all([
       userDeviceRef.update({
         name: newName,
@@ -129,7 +129,7 @@ export async function updateDeviceNameService(
       .send("Erro ao atualizar device. Tente novamente.");
   }
 }
-// ATUALIZAR CONFIGURAÇÕES DO CANAL
+// Update channel settings.
 export async function updateChannelService(request: any, reply: any) {
   try {
     const {
@@ -185,7 +185,7 @@ export async function updateChannelService(request: any, reply: any) {
   }
 }
 
-// OBTER TODOS OS CANAIS DO DEVICE
+// Get all device channels.
 export async function getAllChannelsService(request: any, reply: any) {
   try {
     const { deviceId } = request.query;
@@ -223,7 +223,7 @@ export async function getAllChannelsService(request: any, reply: any) {
   }
 }
 
-// EXCLUIR DEVICE
+// Delete a device.
 export async function deleteDeviceService(
   request: FastifyRequest<{
     Params: { deviceId: string };
@@ -248,7 +248,7 @@ export async function deleteDeviceService(
       .collection("devices")
       .doc(deviceId);
 
-    /** valida ownership */
+    /** Validate ownership. */
     const userDeviceSnap = await userDeviceRef.get();
 
     if (!userDeviceSnap.exists) {
@@ -257,7 +257,7 @@ export async function deleteDeviceService(
         .send("Device não encontrado para este usuário.");
     }
 
-    /** remove em paralelo */
+    /** Remove both documents in parallel. */
     await Promise.all([
       userDeviceRef.delete(),
       globalDeviceRef.delete(),
@@ -274,7 +274,7 @@ export async function deleteDeviceService(
   }
 }
 
-// OBTER CREDENCIAIS MQTT PARA O DEVICE
+// Get MQTT credentials for the device.
 export async function getMqttCredentialsService(
   request: any,
   reply: FastifyReply
@@ -323,7 +323,7 @@ export async function getMqttCredentialsService(
   }
 }
 
-// OBTER URL DE UPLOAD PARA FIRMWARE
+// Get a firmware upload URL.
 export async function getFirmwareUploadUrlService(
   request: FastifyRequest<{ Params: { deviceId: string } }>,
   reply: FastifyReply
@@ -343,7 +343,7 @@ export async function getFirmwareUploadUrlService(
 
   const [uploadUrl] = await bucket.file(path).getSignedUrl({
     action: "write",
-    expires: Date.now() + 10 * 60 * 1000, // 10 minutos
+    expires: Date.now() + 10 * 60 * 1000, // 10 minutes.
     contentType: "application/octet-stream",
   });
 
@@ -354,7 +354,7 @@ export async function getFirmwareUploadUrlService(
   });
 }
 
-// service to commit firmware
+// Commit firmware metadata and return a read URL.
 export async function commitFirmwareService(
   request: FastifyRequest<{
     Params: { deviceId: string };

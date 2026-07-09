@@ -28,7 +28,7 @@ async function getMqttConfig() {
   };
 }
 
-// Login do usuário
+// User login.
 export async function loginUserService(
   request: any,
   reply: FastifyReply
@@ -45,7 +45,7 @@ export async function loginUserService(
     const authUrl =
       "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 
-    // Firebase Auth
+    // Firebase Auth.
     const { data } = await axios.post(
       `${authUrl}?key=${API_KEY}`,
       {
@@ -60,7 +60,7 @@ export async function loginUserService(
 
     setCookies(reply, idToken, refreshToken);
 
-    // Usuário
+    // User profile.
     const userSnap = await db.collection("users").doc(localId).get();
 
     if (!userSnap.exists) {
@@ -71,7 +71,7 @@ export async function loginUserService(
 
     const dataUser = userSnap.data() as any;
 
-    // Devices do usuário (SUBCOLEÇÃO)
+    // User devices subcollection.
     const devicesSnap = await db
       .collection("users")
       .doc(localId)
@@ -115,7 +115,7 @@ export async function loginUserService(
   }
 }
 
-// Obtém credenciais do firebase
+// Get Firebase credentials.
 export async function getCredentialsFirebase() {
   try {
     const userDocRef = db.collection('internal').doc('firebase');
@@ -153,7 +153,7 @@ export async function getCredentialsFirebase() {
   }
 }
 
-// Persistência de login
+// Login persistence.
 export async function persistLoginService(
   request: FastifyRequest,
   reply: FastifyReply
@@ -205,7 +205,7 @@ export async function persistLoginService(
   }
 }
 
-// Registra novo usuário
+// Register a new user.
 export async function registerUserService(
   request: FastifyRequest<{ Body: RegisterBody }>,
   reply: FastifyReply
@@ -213,7 +213,7 @@ export async function registerUserService(
   const { email, password, name } = request.body;
 
   try {
-    // Verifica se já existe usuário com esse e-mail (via Admin SDK)
+    // Check whether a user with this email already exists through the Admin SDK.
     try {
       const existing = await admin.auth().getUserByEmail(email);
       if (existing) {
@@ -222,7 +222,7 @@ export async function registerUserService(
           .send("O e-mail informado já está em uso.");
       }
     } catch (err: any) {
-      // auth/user-not-found é ok
+      // auth/user-not-found is expected here.
       const fbCode = err?.code || err?.errorInfo?.code;
       if (fbCode && fbCode !== "auth/user-not-found") {
         request.log.error(
@@ -235,13 +235,13 @@ export async function registerUserService(
       }
     }
 
-    // Cria usuário no Auth
+    // Create the user in Firebase Auth.
     const userRecord = await admin.auth().createUser({
       email,
       password,
     });
 
-    // Salva no Firestore os dados adicionais
+    // Store additional user data in Firestore.
     await db.collection("users").doc(userRecord.uid).set({
       name,
       email,
@@ -276,7 +276,7 @@ export async function registerUserService(
   }
 }
 
-// Exclui conta de usuário
+// Delete the current user's account.
 export async function deleteOwnUserService(
   request: FastifyRequest,
   reply: FastifyReply
@@ -290,21 +290,20 @@ export async function deleteOwnUserService(
   }
 
   try {
-    // Apaga doc no Firestore (se existir)
+    // Delete the Firestore document if it exists.
     try {
       await db.collection("users").doc(uid).delete();
     } catch (err) {
     }
 
-    // Apaga usuário no Auth
+    // Delete the Firebase Auth user.
     try {
       await admin.auth().deleteUser(uid);
     } catch (err: any) {
       const fbCode = err?.code || err?.errorInfo?.code;
 
       if (fbCode === "auth/user-not-found") {
-        // Se já não existe mais no Auth, seguimos como sucesso
-        // pra experiência do usuário ser "conta apagada"
+        // If the Auth user no longer exists, treat the account as deleted.
       } else {
         return reply
           .status(500)
@@ -312,7 +311,7 @@ export async function deleteOwnUserService(
       }
     }
 
-    // Limpa cookie de sessão
+    // Clear the session cookie.
     reply.clearCookie("__session", {
       path: "/",
       httpOnly: true,
@@ -329,7 +328,7 @@ export async function deleteOwnUserService(
   }
 }
 
-// Logout do usuário
+// User logout.
 export async function logoutUserService(
   request: FastifyRequest,
   reply: FastifyReply
@@ -350,7 +349,7 @@ export async function logoutUserService(
 
     await removeFCMToken(uid);
 
-    // Limpa cookie de sessão
+    // Clear the session cookie.
     reply.clearCookie("__session", {
       path: "/",
       httpOnly: true,
@@ -366,7 +365,7 @@ export async function logoutUserService(
   }
 }
 
-// Atualiza nome do usuário
+// Update the user's name.
 export async function updateUserNameService(
   request: FastifyRequest<{ Body: { name: string } }>,
   reply: FastifyReply
@@ -392,7 +391,7 @@ export async function updateUserNameService(
       return reply.status(401).send("Usuário não encontrado.");
     }
 
-    // Atualiza apenas o nome
+    // Update only the name.
     await userRef.update({
       name: name.trim(),
       updatedAt: FieldValue.serverTimestamp(),

@@ -67,7 +67,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  // criar conta
+  // Register account.
   app.post(
     "/register",
     {
@@ -88,7 +88,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  // deletar conta
+  // Delete account.
   app.delete(
     "/delete_own_account",
     {
@@ -124,7 +124,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  // persistência de login
+  // Login persistence.
   app.get(
     "/persist",
     {
@@ -148,7 +148,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  // get-credentials-firebase (x3r9m2)
+  // Get Firebase credentials (x3r9m2).
   app.get(
     "/x3r9m2",
     {
@@ -167,7 +167,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  // editar nome do usuário
+  // Edit the user's name.
   app.patch<{ Body: z.infer<typeof UserSchemas.updateUserNameBodySchema> }>(
     "/edit",
     {

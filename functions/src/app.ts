@@ -18,7 +18,7 @@ export function buildApp() {
     requestTimeout: 10_000,
     ajv: {
       customOptions: {
-        // IMPORTANTE: Ajv não tenta mais validar os schemas (que são Zod)
+        // Important: Ajv should not validate schemas because they are Zod schemas.
         validateSchema: false,
       },
     },
@@ -33,7 +33,7 @@ export function buildApp() {
 
   app.addHook("preHandler", verifyApiKeyPublic as any);
 
-  // ligar o Zod no Fastify
+  // Wire Zod into Fastify.
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
@@ -45,12 +45,12 @@ export function buildApp() {
   app.register(fastifyCookie);
 
   app.addContentTypeParser("application/json", {}, (req, body: any, done) => {
-    // Se vier no formato antigo { body: <json> }:
+    // Support the legacy { body: <json> } payload format.
     if (body && typeof body === "object" && "body" in body) {
       return done(null, (body as any).body);
     }
 
-    // Se vier como JSON normal, usa direto
+    // Use regular JSON payloads directly.
     done(null, body);
   });
 

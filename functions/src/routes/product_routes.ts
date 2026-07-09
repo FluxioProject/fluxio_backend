@@ -7,7 +7,7 @@ import * as ProductService from "../services/product_service";
 import { sendNotification } from "../services/notification_service";
 
 export async function productRoutes(app: FastifyInstance) {
-  // Criar NOVO PRODUTO
+  // Create a new product.
   app.post(
     "/create",
     {
@@ -28,7 +28,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Enviar notificação push para mobile
+  // Send a mobile push notification.
   app.post(
     "/send-notification",
     {
@@ -51,7 +51,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Obter credenciais MQTT do DEVICE
+  // Get device MQTT credentials.
   app.get(
     "/mqtt",
     {
@@ -72,7 +72,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Editar nome do DEVICE
+  // Edit the device name.
   app.patch(
     "/edit-device/:deviceId",
     {
@@ -102,7 +102,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Atualizar canal do DEVICE
+  // Update a device channel.
   app.patch(
     "/update-channel",
     {
@@ -126,7 +126,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Obter TODOS os canais do DEVICE
+  // Get all device channels.
   app.get(
     "/get-all-channels",
     {
@@ -153,7 +153,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Excluir DEVICE
+  // Delete a device.
   app.delete(
     "/delete-device/:deviceId",
     {
@@ -180,7 +180,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Upload de firmware do DEVICE
+  // Upload device firmware.
   app.post(
     "/:deviceId/firmware/get-upload-url",
     {
@@ -198,7 +198,7 @@ export async function productRoutes(app: FastifyInstance) {
     ProductService.getFirmwareUploadUrlService
   );
 
-  // routes
+  // Commit firmware metadata.
   app.post(
     "/:deviceId/firmware/commit",
     {

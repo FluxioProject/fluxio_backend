@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 
-// Função para salvar FCM token no Firestore
+// Save an FCM token in Firestore.
 export async function saveFCMToken(userid: string, deviceIds: string[], token: string,
 ) {
     try {
@@ -28,7 +28,7 @@ export async function saveFCMToken(userid: string, deviceIds: string[], token: s
     }
 }
 
-// Função para remover FCM token no Firestore
+// Remove an FCM token from Firestore.
 export async function removeFCMToken(userid: string, tokenfcm?: string) {
     try {
         const devicesCollection = admin.firestore().collection('devices-db');
@@ -51,12 +51,12 @@ export async function removeFCMToken(userid: string, tokenfcm?: string) {
                 const tokenData = tokenDoc.data();
 
                 if (tokenfcm) {
-                    // Excluir pelo token específico (logout simples)
+                    // Delete by a specific token during single-device logout.
                     if (tokenDoc.id === tokenfcm) {
                         batch.delete(tokenDoc.ref);
                     }
                 } else {
-                    // Excluir pelo userId
+                    // Delete every token owned by the userId.
                     if (tokenData.userid === userid) {
                         batch.delete(tokenDoc.ref);
                     }

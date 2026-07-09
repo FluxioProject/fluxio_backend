@@ -12,20 +12,20 @@ export const createProductBodySchema = z.object({
     .max(120, "deviceId deve ter no máximo 120 caracteres."),
 });
 
-// Resposta de sucesso do create
+// Successful create response.
 export const createProductResponseSchema = z.object({
   message: z.string(),
 });
 
 export type CreateProductBody = z.infer<typeof createProductBodySchema>;
 
-// Produto “resumido” para lista
+// Compact product item for lists.
 export const productListItemSchema = z.object({
   id: z.string(),
   name: z.string().max(120),
 });
 
-// Resposta do GET /products
+// GET /products response.
 export const listProductsResponseSchema = z.object({
   products: z.array(productListItemSchema),
 });

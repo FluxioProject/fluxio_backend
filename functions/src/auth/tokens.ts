@@ -2,7 +2,7 @@
 import { admin } from "../firebaseAdmin";
 import axios from "axios";
 
-// Função para verificar o idToken e extrair o userId
+// Verify the idToken and attach the userId to the request.
 export async function verifyToken(request: any, reply: any): Promise<void> {
   let tokens;
   try {
@@ -59,7 +59,7 @@ export async function verifyToken(request: any, reply: any): Promise<void> {
   }
 }
 
-// Verifica se a API Key pública está correta
+// Verify the public API key.
 export async function verifyApiKeyPublic(
   request: any,
   reply: any
@@ -78,7 +78,7 @@ export async function verifyApiKeyPublic(
   }
 }
 
-// Extrai o userId do idToken
+// Extract the userId from an idToken.
 async function extractUserId(token: string): Promise<string | null> {
   try {
     const idToken = token.toString().split("|")[0];
@@ -89,7 +89,7 @@ async function extractUserId(token: string): Promise<string | null> {
   }
 }
 
-// Reinicia o idToken usando o refreshToken
+// Refresh the idToken using the refreshToken.
 async function refreshIdToken(
   token: string
 ): Promise<{ idToken: string; refreshToken: string } | null> {
@@ -104,7 +104,7 @@ async function refreshIdToken(
     data.append("grant_type", "refresh_token");
     data.append("refresh_token", refreshToken);
 
-    const API_KEY = "AIzaSyDzKtn2J4KCmuihHFXAOeo5ZOwRpHpzTNE"; // apikey do projeto firebase (gcp)
+    const API_KEY = "AIzaSyDzKtn2J4KCmuihHFXAOeo5ZOwRpHpzTNE"; // Firebase project API key (GCP).
 
     const response = await axios.post(
       `https://securetoken.googleapis.com/v1/token?key=${API_KEY}`,
@@ -128,7 +128,7 @@ async function refreshIdToken(
   }
 }
 
-// Define os cookies __session com os tokens
+// Set the __session cookie with the current tokens.
 export function setCookies(
   reply: any,
   idToken: string | undefined,
