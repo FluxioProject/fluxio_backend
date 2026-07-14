@@ -18,8 +18,8 @@ export const createProductResponseSchema = z.object({
 });
 
 export type CreateProductBody = z.infer<typeof createProductBodySchema>;
+// Compact product item for lists.\1
 
-// Compact product item for lists.
 export const productListItemSchema = z.object({
   id: z.string(),
   name: z.string().max(120),
@@ -160,4 +160,52 @@ export const getAllChannelsResponseSchema = z.object({
   ao: z.record(z.string(), channelItemSchema),
   di: z.record(z.string(), digitalChannelItemSchema),
   do: z.record(z.string(), digitalChannelItemSchema),
+});
+
+export const semverRegex = /^\d+\.\d+\.\d+$/;
+
+export const getFirmwareUploadUrlBodySchema = z.object({
+  version: z.string().regex(semverRegex, "Versão deve seguir o formato X.Y.Z"),
+  extension: z.enum(["bin", "hex", "uf2"]),
+});
+
+const logicInputSchema = z.tuple([z.number().int(), z.number()]);
+
+export const logicBlockSchema = z.object({
+  id: z.number().int(),
+  t: z.number().int(), // BlockType index (io / math / compare / timer)
+  in: z.array(logicInputSchema).default([]),
+  io: z.tuple([z.number().int(), z.number().int()]).optional(), // [ioType, channel]
+  op: z.number().int().optional(), // math/compare op index
+  time: z.number().optional(), // redundante, mantido por compat com o firmware
+  lg: z.number().int().optional(), // 1=AND, 2=OR, 3=NOT (cosmético, só o app usa)
+  // Posição no canvas — o firmware não lê isso, é só pra reconstruir o
+  // layout visual ao carregar do backend (ver _deserializeLogic no Flutter,
+  // que já suporta x/y quando presentes).
+  x: z.number().optional(),
+  y: z.number().optional(),
+});
+
+export const saveLogicBodySchema = z.object({
+  v: z.number().int(),
+  blocks: z.array(logicBlockSchema),
+});
+
+export const saveLogicResponseSchema = z.object({
+  message: z.string(),
+  updatedAt: z.string(),
+});
+
+export const getLogicResponseSchema = z.object({
+  v: z.number().int(),
+  blocks: z.array(logicBlockSchema),
+  updatedAt: z.string().nullable(),
+});
+
+export type SaveLogicBody = z.infer<typeof saveLogicBodySchema>;
+
+export const getLogicForDeviceResponseSchema = z.object({
+  v: z.number().int(),
+  blocks: z.array(logicBlockSchema),
+  updatedAt: z.string().nullable(),
 });

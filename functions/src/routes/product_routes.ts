@@ -180,15 +180,19 @@ export async function productRoutes(app: FastifyInstance) {
     }
   );
 
-  // Upload device firmware.
+  // Upload device firmware. Now takes { version, extension } in the body
+  // so the storage path can be built from the version the user typed
+  // (e.g. "v1.0.0.bin") instead of a timestamp.
   app.post(
     "/:deviceId/firmware/get-upload-url",
     {
       preHandler: verifyToken as any,
       schema: {
         params: z.object({ deviceId: z.string() }),
+        body: ProductSchemas.getFirmwareUploadUrlBodySchema,
         response: {
           200: ProductSchemas.getFirmwareUploadUrlResponseSchema,
+          400: z.string(),
           401: z.string(),
           404: z.string(),
           500: z.string(),
@@ -218,5 +222,73 @@ export async function productRoutes(app: FastifyInstance) {
       },
     },
     ProductService.commitFirmwareService
+  );
+
+  app.get(
+    "/:deviceId/firmware/latest",
+    {
+      schema: {
+        params: z.object({ deviceId: z.string() }),
+        response: {
+          200: z.object({
+            version: z.string(),
+            sha256: z.string(),
+            size: z.number(),
+            readUrl: z.string(),
+          }),
+          401: z.string(),
+          404: z.string(),
+          500: z.string(),
+        },
+      },
+    },
+    ProductService.getLatestFirmwareService
+  );
+  app.post(
+    "/:deviceId/logic",
+    {
+      preHandler: verifyToken as any,
+      schema: {
+        params: z.object({ deviceId: z.string() }),
+        body: ProductSchemas.saveLogicBodySchema,
+        response: {
+          200: ProductSchemas.saveLogicResponseSchema,
+          401: z.string(),
+          404: z.string(),
+          500: z.string(),
+        },
+      },
+    },
+    ProductService.saveLogicService
+  );
+  app.get(
+    "/:deviceId/logic",
+    {
+      preHandler: verifyToken as any,
+      schema: {
+        params: z.object({ deviceId: z.string() }),
+        response: {
+          200: ProductSchemas.getLogicResponseSchema,
+          401: z.string(),
+          404: z.string(),
+          500: z.string(),
+        },
+      },
+    },
+    ProductService.getLogicService
+  );
+  app.get(
+    "/:deviceId/logic-for-device",
+    {
+      schema: {
+        params: z.object({ deviceId: z.string() }),
+        response: {
+          200: ProductSchemas.getLogicForDeviceResponseSchema,
+          404: z.string(),
+          500: z.string(),
+        },
+      },
+    },
+    ProductService.getLogicForDeviceService
   );
 }

@@ -5,6 +5,17 @@ import { FieldValue } from "firebase-admin/firestore";
 import * as schemas from "../schemas/product_schemas";
 import { admin } from "../firebaseAdmin";
 
+// Compares two "X.Y.Z" version strings (already validated by the schema).
+// Returns <0 if a<b, 0 if equal, >0 if a>b.
+function compareSemver(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] - pb[i];
+  }
+  return 0;
+}
+
 // Create a product.
 export async function createProductService(
   request: FastifyRequest<{ Body: schemas.CreateProductBody }>,
@@ -185,6 +196,39 @@ export async function updateChannelService(request: any, reply: any) {
   }
 }
 
+// Get the latest committed firmware version for a device.
+export async function getLatestFirmwareService(
+  request: FastifyRequest<{ Params: { deviceId: string } }>,
+  reply: FastifyReply
+) {
+  const { deviceId } = request.params;
+
+  const snap = await db
+    .collection("firmwares")
+    .where("deviceId", "==", deviceId)
+    .orderBy("createdAt", "desc")
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    return reply.status(404).send("Nenhum firmware encontrado para este device.");
+  }
+
+  const doc = snap.docs[0].data();
+
+  const [readUrl] = await bucket.file(doc.path).getSignedUrl({
+    action: "read",
+    expires: Date.now() + 30 * 60 * 1000,
+  });
+
+  return reply.send({
+    version: doc.version,
+    sha256: doc.sha256,
+    size: doc.size,
+    readUrl,
+  });
+}
+
 // Get all device channels.
 export async function getAllChannelsService(request: any, reply: any) {
   try {
@@ -323,12 +367,21 @@ export async function getMqttCredentialsService(
   }
 }
 
-// Get a firmware upload URL.
+// Get a firmware upload URL. Now takes a client-chosen version (X.Y.Z) and
+// the file extension, and builds the storage path as
+// "firmwares/{deviceId}/v{version}.{extension}" instead of a timestamp.
+// Rejects versions that are older than or equal to the latest committed
+// one for this device, so re-uploading an outdated build is blocked
+// server-side even if the client-side check was bypassed.
 export async function getFirmwareUploadUrlService(
-  request: FastifyRequest<{ Params: { deviceId: string } }>,
+  request: FastifyRequest<{
+    Params: { deviceId: string };
+    Body: { version: string; extension: "bin" | "hex" | "uf2" };
+  }>,
   reply: FastifyReply
 ) {
   const { deviceId } = request.params;
+  const { version, extension } = request.body;
   const uid = (request as any).userId;
 
   const deviceRef = db.collection("devices").doc(deviceId);
@@ -338,8 +391,25 @@ export async function getFirmwareUploadUrlService(
     return reply.status(404).send("Device não encontrado.");
   }
 
-  const version = Date.now().toString();
-  const path = `firmwares/${deviceId}/fw_${version}.bin`;
+  const latestSnap = await db
+    .collection("firmwares")
+    .where("deviceId", "==", deviceId)
+    .orderBy("createdAt", "desc")
+    .limit(1)
+    .get();
+
+  if (!latestSnap.empty) {
+    const latestVersion = latestSnap.docs[0].data().version as string;
+    if (compareSemver(version, latestVersion) <= 0) {
+      return reply
+        .status(400)
+        .send(
+          `Versão inválida: já existe a versão ${latestVersion} para este device. Envie uma versão mais recente.`
+        );
+    }
+  }
+
+  const path = `firmwares/${deviceId}/v${version}.${extension}`;
 
   const [uploadUrl] = await bucket.file(path).getSignedUrl({
     action: "write",
@@ -395,5 +465,166 @@ export async function commitFirmwareService(
   return reply.send({
     readUrl,
     version,
+  });
+}
+
+export async function saveLogicService(
+  request: FastifyRequest<{
+    Params: { deviceId: string };
+    Body: schemas.SaveLogicBody;
+  }>,
+  reply: FastifyReply
+) {
+  const uid = (request as any).userId as string | undefined;
+  const { deviceId } = request.params;
+  const { v, blocks } = request.body;
+
+  if (!uid) {
+    return reply.status(401).send("Acesso negado.");
+  }
+
+  try {
+    // Valida posse do device, igual ao padrão usado em
+    // updateDeviceNameService / deleteDeviceService.
+    const userDeviceRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("devices")
+      .doc(deviceId);
+
+    const userDeviceSnap = await userDeviceRef.get();
+
+    if (!userDeviceSnap.exists) {
+      return reply
+        .status(404)
+        .send("Device não encontrado para este usuário.");
+    }
+
+    const logicRef = db
+      .collection("devices")
+      .doc(deviceId)
+      .collection("logic")
+      .doc("current");
+
+    const now = new Date();
+
+    await logicRef.set({
+      v,
+      blocks: blocksToFirestore(blocks),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: uid,
+    });
+
+    return reply.status(200).send({
+      message: "Lógica salva com sucesso.",
+      updatedAt: now.toISOString(),
+    });
+  } catch (err) {
+    request.log.error({ err }, "Erro ao salvar lógica");
+    return reply.status(500).send("Erro ao salvar lógica. Tente novamente.");
+  }
+}
+
+function blocksToFirestore(blocks: any[]) {
+  return blocks.map((b) => ({
+    ...b,
+    in: Array.isArray(b.in)
+      ? b.in.map((pair: any[]) => ({ k: pair[0], v: pair[1] }))
+      : [],
+  }));
+}
+
+function blocksFromFirestore(blocks: any[]) {
+  return blocks.map((b) => ({
+    ...b,
+    in: Array.isArray(b.in)
+      ? b.in.map((pair: any) => [pair.k, pair.v])
+      : [],
+  }));
+}
+
+export async function getLogicService(
+  request: FastifyRequest<{ Params: { deviceId: string } }>,
+  reply: FastifyReply
+) {
+  const uid = (request as any).userId as string | undefined;
+  const { deviceId } = request.params;
+
+  if (!uid) {
+    return reply.status(401).send("Acesso negado.");
+  }
+
+  try {
+    const userDeviceRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("devices")
+      .doc(deviceId);
+
+    const userDeviceSnap = await userDeviceRef.get();
+
+    if (!userDeviceSnap.exists) {
+      return reply
+        .status(404)
+        .send("Device não encontrado para este usuário.");
+    }
+
+    const logicRef = db
+      .collection("devices")
+      .doc(deviceId)
+      .collection("logic")
+      .doc("current");
+
+    const snap = await logicRef.get();
+
+    if (!snap.exists) {
+      return reply.status(404).send("Nenhuma lógica salva para este device.");
+    }
+
+    const data = snap.data()!;
+    const updatedAt = data.updatedAt?.toDate?.() ?? null;
+
+    return reply.status(200).send({
+      v: data.v,
+      blocks: blocksFromFirestore(data.blocks),
+      updatedAt: updatedAt ? updatedAt.toISOString() : null,
+    });
+  } catch (err) {
+    request.log.error({ err }, "Erro ao buscar lógica");
+    return reply.status(500).send("Erro ao buscar lógica. Tente novamente.");
+  }
+}
+
+export async function getLogicForDeviceService(
+  request: FastifyRequest<{ Params: { deviceId: string } }>,
+  reply: FastifyReply
+) {
+  const { deviceId } = request.params;
+
+  const deviceRef = db.collection("devices").doc(deviceId);
+  const deviceSnap = await deviceRef.get();
+
+  if (!deviceSnap.exists) {
+    return reply.status(404).send("Device não encontrado.");
+  }
+
+  const logicRef = deviceRef.collection("logic").doc("current");
+  const snap = await logicRef.get();
+
+  if (!snap.exists) {
+    return reply.status(404).send("Nenhuma lógica salva para este device.");
+  }
+
+  const data = snap.data()!;
+  const updatedAt = data.updatedAt?.toDate?.() ?? null;
+
+  const blocks = blocksFromFirestore(data.blocks).map(
+    ({ x, y, ...rest }) => rest
+  );
+
+  return reply.status(200).send({
+    v: data.v,
+    blocks,
+    updatedAt: updatedAt ? updatedAt.toISOString() : null,
   });
 }
