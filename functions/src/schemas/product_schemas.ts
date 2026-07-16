@@ -94,24 +94,43 @@ export const sendNotification = z.object({
 
 export type SendNotificationBody = z.infer<typeof sendNotification>;
 
-export const updateChannelSchema = z.object({
-  deviceId: z.string().min(1).max(30),
-  channelName: z.string().min(1).max(30),
-  type: z.enum(["ai", "ao", "di", "do"]),
-  index: z.number().int().min(0).max(15),
+export const digitalTriggerSchema = z.union([z.literal(0), z.literal(1)]);
 
-  min: z.number().optional(),
-  max: z.number().optional(),
+export const updateChannelSchema = z.discriminatedUnion("type", [
+  z.object({
+    deviceId: z.string().min(1).max(30),
+    channelName: z.string().min(1).max(30),
+    type: z.enum(["ai", "ao"]),
+    index: z.number().int().min(0).max(15),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    mapMin: z.number().optional(),
+    mapMax: z.number().optional(),
+    notifyMobile: z.boolean().optional(),
+    notifyEmail: z.boolean().optional(),
+    notifySms: z.boolean().optional(),
+  }),
+  z.object({
+    deviceId: z.string().min(1).max(30),
+    channelName: z.string().min(1).max(30),
+    type: z.enum(["di", "do"]),
+    index: z.number().int().min(0).max(15),
+    trigger: digitalTriggerSchema.optional(), // 0 = dispara em LOW, 1 = dispara em HIGH
+    notifyMobile: z.boolean().optional(),
+    notifyEmail: z.boolean().optional(),
+    notifySms: z.boolean().optional(),
+  }),
+]);
 
-  mapMin: z.number().optional(),
-  mapMax: z.number().optional(),
+export type UpdateChannelBody = z.infer<typeof updateChannelSchema>;
 
+export const digitalChannelItemSchema = z.object({
+  channelName: z.string().optional(),
+  trigger: digitalTriggerSchema.optional(),
   notifyMobile: z.boolean().optional(),
   notifyEmail: z.boolean().optional(),
   notifySms: z.boolean().optional(),
 });
-
-export type UpdateChannelBody = z.infer<typeof updateChannelSchema>;
 
 export const updateChannelResponseSchema = z.object({
   message: z.string(),
@@ -142,13 +161,6 @@ export const channelItemSchema = z.object({
   mapMax: z.number().optional(),
   min: z.number().optional(),
   max: z.number().optional(),
-  notifyMobile: z.boolean().optional(),
-  notifyEmail: z.boolean().optional(),
-  notifySms: z.boolean().optional(),
-  channelName: z.string().optional(),
-});
-
-export const digitalChannelItemSchema = z.object({
   notifyMobile: z.boolean().optional(),
   notifyEmail: z.boolean().optional(),
   notifySms: z.boolean().optional(),

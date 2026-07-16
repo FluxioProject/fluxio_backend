@@ -140,56 +140,45 @@ export async function updateDeviceNameService(
       .send("Erro ao atualizar device. Tente novamente.");
   }
 }
+
 // Update channel settings.
 export async function updateChannelService(request: any, reply: any) {
   try {
-    const {
-      deviceId,
-      channelName,
-      type,
-      index,
-      min,
-      max,
-      mapMin,
-      mapMax,
-      notifyMobile,
-      notifyEmail,
-      notifySms,
-    } = request.body;
+    const body = request.body;
 
-    const deviceRef = admin.firestore().collection('devices').doc(deviceId);
+    const deviceRef = admin.firestore().collection('devices').doc(body.deviceId);
     const deviceSnap = await deviceRef.get();
 
     if (!deviceSnap.exists) {
       return reply.status(404).send('Dispositivo não encontrado.');
     }
 
-    const docId = `${type}_${index}`;
-
-    const channelRef = deviceRef
-      .collection('channels')
-      .doc(docId);
+    const docId = `${body.type}_${body.index}`;
+    const channelRef = deviceRef.collection('channels').doc(docId);
 
     const updateData: any = {
-      type,
-      index,
+      type: body.type,
+      index: body.index,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    if (channelName !== undefined) updateData.channelName = channelName;
-    if (min !== undefined) updateData.min = min;
-    if (max !== undefined) updateData.max = max;
-    if (mapMin !== undefined) updateData.mapMin = mapMin;
-    if (mapMax !== undefined) updateData.mapMax = mapMax;
-    if (notifyMobile !== undefined) updateData.notifyMobile = notifyMobile;
-    if (notifyEmail !== undefined) updateData.notifyEmail = notifyEmail;
-    if (notifySms !== undefined) updateData.notifySms = notifySms;
+    if (body.channelName !== undefined) updateData.channelName = body.channelName;
+    if (body.notifyMobile !== undefined) updateData.notifyMobile = body.notifyMobile;
+    if (body.notifyEmail !== undefined) updateData.notifyEmail = body.notifyEmail;
+    if (body.notifySms !== undefined) updateData.notifySms = body.notifySms;
+
+    if (body.type === 'ai' || body.type === 'ao') {
+      if (body.min !== undefined) updateData.min = body.min;
+      if (body.max !== undefined) updateData.max = body.max;
+      if (body.mapMin !== undefined) updateData.mapMin = body.mapMin;
+      if (body.mapMax !== undefined) updateData.mapMax = body.mapMax;
+    } else {
+      if (body.trigger !== undefined) updateData.trigger = body.trigger;
+    }
 
     await channelRef.set(updateData, { merge: true });
 
-    return reply.status(200).send({
-      message: 'Canal atualizado com sucesso.',
-    });
+    return reply.status(200).send({ message: 'Canal atualizado com sucesso.' });
   } catch (err) {
     console.error(err);
     return reply.status(500).send('Erro interno.');
@@ -233,31 +222,35 @@ export async function getLatestFirmwareService(
 export async function getAllChannelsService(request: any, reply: any) {
   try {
     const { deviceId } = request.query;
-
     const deviceRef = admin.firestore().collection('devices').doc(deviceId);
     const snap = await deviceRef.collection('channels').get();
 
-    const result: any = {
-      ai: {},
-      ao: {},
-      di: {},
-      do: {},
-    };
+    const result: any = { ai: {}, ao: {}, di: {}, do: {} };
 
     snap.forEach((doc) => {
       const data = doc.data();
       if (!data.type || data.index === undefined) return;
 
-      result[data.type][String(data.index)] = {
-        channelName: data.channelName || '',
-        mapMin: data.mapMin,
-        mapMax: data.mapMax,
-        min: data.min,
-        max: data.max,
-        notifyMobile: data.notifyMobile ?? false,
-        notifyEmail: data.notifyEmail ?? false,
-        notifySms: data.notifySms ?? false,
-      };
+      if (data.type === 'ai' || data.type === 'ao') {
+        result[data.type][String(data.index)] = {
+          channelName: data.channelName || '',
+          mapMin: data.mapMin,
+          mapMax: data.mapMax,
+          min: data.min,
+          max: data.max,
+          notifyMobile: data.notifyMobile ?? false,
+          notifyEmail: data.notifyEmail ?? false,
+          notifySms: data.notifySms ?? false,
+        };
+      } else {
+        result[data.type][String(data.index)] = {
+          channelName: data.channelName || '',
+          trigger: data.trigger ?? 1,
+          notifyMobile: data.notifyMobile ?? false,
+          notifyEmail: data.notifyEmail ?? false,
+          notifySms: data.notifySms ?? false,
+        };
+      }
     });
 
     return reply.status(200).send(result);
